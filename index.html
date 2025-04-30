@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Counter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    .counter {
+      font-size: 48px;
+      margin: 20px 0;
+    }
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Counter In Server 1</h1>
+  <div class="counter" id="counter">0</div>
+  <button onclick="increment()">Increment+</button>
+  <button onclick="decrement()">Decrement</button>
+  <button onclick="reset()">Reset</button>
+
+  <script>
+    let count = 0;
+
+    function increment() {
+      count++;
+      updateCounter();
+    }
+
+    function decrement() {
+      count--;
+      updateCounter();
+    }
+
+    function reset() {
+      count = 0;
+      updateCounter();
+    }
+
+    function updateCounter() {
+      document.getElementById('counter').innerText = count;
+    }
+  </script>
+</body>
+</html>

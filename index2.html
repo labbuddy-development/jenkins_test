@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Selector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    #color-display {
+      margin-top: 20px;
+      padding: 50px;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    #color-display span {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    input[type="color"] {
+      margin-top: 20px;
+      cursor: pointer;
+      height: 40px;
+      width: 40px;
+      border: none;
+      padding: 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Color Selector</h1>
+  <div id="color-display">
+    <span>Selected Color: #ffffff</span>
+  </div>
+  <br>
+  <input type="color" id="color-picker" value="#ffffff" />
+
+  <script>
+    const colorPicker = document.getElementById("color-picker");
+    const colorDisplay = document.getElementById("color-display");
+
+    colorPicker.addEventListener("input", () => {
+      const selectedColor = colorPicker.value;
+      colorDisplay.style.backgroundColor = selectedColor;
+      colorDisplay.querySelector("span").textContent = `Selected Color: ${selectedColor}`;
+    });
+  </script>
+</body>
+</html>
