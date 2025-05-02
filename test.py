@@ -1,5 +1,5 @@
 def get():
-    print("Hello test 1")
+    print("Hello test labbuddy")
 
 
 get()
