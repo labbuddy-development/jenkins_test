@@ -1,5 +1,3 @@
-# PowerShell Script to Install and Configure Jenkins on Windows
-
 # Set variables
 $jenkinsUrl = "http://localhost:8080"
 $adminUser = "admin"
@@ -13,27 +11,38 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 }
 
-# Install Java, Jenkins, curl, and wget
+# Install required packages
 choco install openjdk --version=21 -y
 choco install jenkins -y
 choco install curl wget -y
 
-# Wait for Jenkins service to start
+# Wait for Jenkins installation
 Start-Sleep -Seconds 30
 
-# Disable Jenkins Setup Wizard
-$jenkinsXml = "$Env:ProgramData\Jenkins\jenkins.xml"
+# Fix jenkins.xml to skip setup wizard
+$jenkinsXml = "$jenkinsHome\jenkins.xml"
 if (Test-Path $jenkinsXml) {
     (Get-Content $jenkinsXml) -replace '<arguments>.*?</arguments>', '<arguments>-Djenkins.install.runSetupWizard=false</arguments>' | Set-Content $jenkinsXml
-    Restart-Service jenkins
-    Start-Sleep -Seconds 30
 }
 
-# Create init Groovy script for admin user
-$groovyInitPath = "$jenkinsHome\init.groovy.d"
-New-Item -ItemType Directory -Force -Path $groovyInitPath
+# Start Jenkins service (fix service name if different)
+Start-Service jenkins
+Start-Sleep -Seconds 60
 
-@'
+# Confirm Jenkins is running
+if (-not (Get-Service jenkins -ErrorAction SilentlyContinue)) {
+    Write-Error "Jenkins service not found. Check if Jenkins installed properly."
+    exit 1
+}
+
+# Create Groovy init script directory with admin rights
+$groovyInitPath = "$jenkinsHome\init.groovy.d"
+if (-not (Test-Path $groovyInitPath)) {
+    New-Item -ItemType Directory -Force -Path $groovyInitPath
+}
+
+# Write admin user script
+$basicSecurityScript = @'
 #!groovy
 import jenkins.model.*
 import hudson.security.*
@@ -46,25 +55,43 @@ strategy.setAllowAnonymousRead(false)
 instance.setAuthorizationStrategy(strategy)
 instance.setInstallState(jenkins.install.InstallState.INITIAL_SETUP_COMPLETED)
 instance.save()
-'@ | Out-File "$groovyInitPath\basic-security.groovy" -Encoding UTF8
+'@
 
-# Disable CSRF
-@'
+$basicSecurityScript | Set-Content -Path "$groovyInitPath\basic-security.groovy" -Encoding UTF8 -Force
+
+# Write disable CSRF script
+$disableCsrfScript = @'
 #!groovy
 import jenkins.model.*
 instance = Jenkins.getInstance()
 instance.setCrumbIssuer(null)
 instance.save()
-'@ | Out-File "$groovyInitPath\disable-csrf.groovy" -Encoding UTF8
+'@
+
+$disableCsrfScript | Set-Content -Path "$groovyInitPath\disable-csrf.groovy" -Encoding UTF8 -Force
 
 # Restart Jenkins to apply Groovy scripts
 Restart-Service jenkins
 Start-Sleep -Seconds 60
 
-# Download Jenkins CLI
-Invoke-WebRequest "$jenkinsUrl/jnlpJars/jenkins-cli.jar" -OutFile "$env:TEMP\jenkins-cli.jar"
+# Download Jenkins CLI (try multiple times if necessary)
+$cliPath = "$env:TEMP\jenkins-cli.jar"
+$cliDownloaded = $false
+for ($i = 0; $i -lt 5; $i++) {
+    try {
+        Invoke-WebRequest "$jenkinsUrl/jnlpJars/jenkins-cli.jar" -OutFile $cliPath -UseBasicParsing -ErrorAction Stop
+        $cliDownloaded = $true
+        break
+    } catch {
+        Start-Sleep -Seconds 15
+    }
+}
+if (-not $cliDownloaded) {
+    Write-Error "Failed to download Jenkins CLI after multiple attempts."
+    exit 1
+}
 
-# Create plugin list
+# Install plugins
 $plugins = @"
 antisamy-markup-formatter
 git
@@ -90,10 +117,9 @@ github
 workflow-basic-steps
 "@ -split "`n"
 
-# Install Jenkins plugins
 foreach ($plugin in $plugins) {
     if ($plugin.Trim()) {
-        java -jar "$env:TEMP\jenkins-cli.jar" -s $jenkinsUrl -auth "${adminUser}:$adminPassword" install-plugin $plugin.Trim()
+        java -jar $cliPath -s $jenkinsUrl -auth "${adminUser}:$adminPassword" install-plugin $plugin.Trim()
     }
 }
 
