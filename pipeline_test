@@ -1,0 +1,36 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scmGit(
+                    branches: [[name: '*/main']],
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        credentialsId: '06166ada-1940-4823-9786-880934356bd8',
+                        url: 'https://github.com/labbuddy-development/jenkins_test.git'
+                    ]]
+                )
+            }
+        }
+        stage('Setup Virtual Environment and Install Dependencies') {
+            steps {
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install fastapi jinja2 aiofiles uvicorn
+                '''
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    python test.py
+                '''
+            }
+        }
+    }
+}
