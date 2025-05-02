@@ -113,63 +113,74 @@ runcmd:
     cat <<'EOF' > /var/lib/jenkins/init.groovy.d/create-pipeline-job.groovy
     #!groovy
     import jenkins.model.*
-    import javaposse.jobdsl.plugin.ExecuteDslScripts
     import hudson.plugins.git.*
     import org.jenkinsci.plugins.workflow.job.*
     import org.jenkinsci.plugins.workflow.cps.*
     import hudson.triggers.*
+    import org.jenkinsci.plugins.github_branch_source.*
+    import hudson.util.*
+    import jenkins.util.Timer
+    import java.util.concurrent.TimeUnit
 
-    def jenkins = Jenkins.getInstance()
-    def job = new WorkflowJob(jenkins, "AutoGitHubPipeline")
+    Timer.get().schedule({
+        def jenkins = Jenkins.get()
 
-    job.setDescription("Pipeline triggered by GitHub push")
-    job.setDisplayName("GitHub Auto Trigger Pipeline")
+        if (jenkins.getItem("AutoGitHubPipeline") != null) {
+            println("Job already exists, skipping creation.")
+            return
+        }
 
-    job.definition = new CpsFlowDefinition("""
-    pipeline {
-        agent any
+        println("Creating AutoGitHubPipeline...")
 
-        stages {
-            stage('Checkout') {
-                steps {
-                    checkout scmGit(
-                        branches: [[name: '*/main']],
-                        extensions: [],
-                        userRemoteConfigs: [[
-                            credentialsId: '06166ada-1940-4823-9786-880934356bd8',
-                            url: 'https://github.com/labbuddy-development/jenkins_test.git'
-                        ]]
-                    )
+        def job = new WorkflowJob(jenkins, "AutoGitHubPipeline")
+
+        job.definition = new CpsFlowDefinition("""
+        pipeline {
+            agent any
+
+            stages {
+                stage('Checkout') {
+                    steps {
+                        checkout scmGit(
+                            branches: [[name: '*/main']],
+                            extensions: [],
+                            userRemoteConfigs: [[
+                                credentialsId: '06166ada-1940-4823-9786-880934356bd8',
+                                url: 'https://github.com/labbuddy-development/jenkins_test.git'
+                            ]]
+                        )
+                    }
                 }
-            }
-            stage('Setup Virtual Environment and Install Dependencies') {
-                steps {
-                    sh '''
-                        python3 -m venv venv
-                        . venv/bin/activate
-                        pip install --upgrade pip
-                        pip install fastapi jinja2 aiofiles uvicorn
-                    '''
+                stage('Setup Virtual Environment and Install Dependencies') {
+                    steps {
+                        sh '''
+                            python3 -m venv venv
+                            . venv/bin/activate
+                            pip install --upgrade pip
+                            pip install fastapi jinja2 aiofiles uvicorn
+                        '''
+                    }
                 }
-            }
-            stage('Run Tests') {
-                steps {
-                    sh '''
-                        . venv/bin/activate
-                        python test.py
-                    '''
+                stage('Run Tests') {
+                    steps {
+                        sh '''
+                            . venv/bin/activate
+                            python test.py
+                        '''
+                    }
                 }
             }
         }
-    }
-    """, true)
+        """, true)
 
-    job.addTrigger(new SCMTrigger("H/2 * * * *")) // fallback polling
-    job.addTrigger(new GitHubPushTrigger())
+        job.addTrigger(new SCMTrigger("H/2 * * * *"))
+        job.addTrigger(new GitHubPushTrigger())
 
-    jenkins.reload()
-    jenkins.save()
-    job.save()
+        jenkins.add(job, job.name)
+        job.save()
+        println("Pipeline job created.")
+
+    }, 30, TimeUnit.SECONDS)  // Delay to ensure Jenkins and plugins are ready
     EOF
 
   - chown -R jenkins:jenkins /var/lib/jenkins
