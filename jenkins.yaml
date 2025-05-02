@@ -82,6 +82,8 @@ runcmd:
     dark-theme
     ws-cleanup
     cloudbees-folder
+    github
+    workflow-basic-steps
     EOF
 
   # Install plugins using CLI
