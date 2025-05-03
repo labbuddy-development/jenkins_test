@@ -21,7 +21,7 @@ pipeline {
         }
         stage('Setup Virtual Environment and Install Dependencies') {
             steps {
-                sh '''
+                bat '''
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip
@@ -31,7 +31,7 @@ pipeline {
         }
         stage('Run Tests') {
             steps {
-                sh '''
+                bat '''
                     . venv/bin/activate
                     python test.py
                 '''
@@ -40,7 +40,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 sshagent (credentials: [env.SSH_KEY]) {
-                    sh '''
+                    bat '''
                         ssh -o StrictHostKeyChecking=no $EC2_HOST << 'EOF'
                             pkill uvicorn || true
                             cd /home/ec2-user/app || mkdir /home/ec2-user/app && cd /home/ec2-user/app
