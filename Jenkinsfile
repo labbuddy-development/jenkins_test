@@ -1,18 +1,18 @@
 pipeline {
     agent any
 
-    // triggers {
-    //     // Poll SCM for changes in any branch, checking every 2 minutes
-    //     pollSCM('H/2 * * * *')
-    // }
+    triggers {
+        // Poll SCM for changes in any branch, checking every 2 minutes
+        pollSCM('H/2 * * * *')
+    }
 
     stages {
         stage('Checkout') {
             steps {
-                // Checkout the specific branch dynamically using the BRANCH_NAME variable
+                // Checkout the specific branch with full commit history (no shallow clone)
                 checkout scmGit(
                     branches: [[name: "*/${env.BRANCH_NAME}"]],
-                    extensions: [],
+                    extensions: [[$class: 'CloneOption', shallow: false, depth: 0, noTags: false, reference: '']],
                     userRemoteConfigs: [[
                         credentialsId: 'aa2cabb1-2bd4-4521-bbf0-dc9b47a7f758',
                         url: 'https://github.com/labbuddy-development/jenkins_test.git'
@@ -38,7 +38,23 @@ pipeline {
         stage('Check Readme Change') {
             when {
                 // Trigger this stage if README.md (case-insensitive) is modified in any directory
-                changeset pattern: /(?i).*\bREADME\.md$/, caseSensitive: false
+                anyOf {
+                    changeset pattern: /(?i).*README\.md/, caseSensitive: false
+                    expression {
+                        // Fallback: Check changeset manually for README.md
+                        def changeLogSets = currentBuild.changeSets
+                        for (changeLogSet in changeLogSets) {
+                            for (entry in changeLogSet) {
+                                for (file in entry.affectedFiles) {
+                                    if (file.path.toLowerCase().contains('readme.md')) {
+                                        return true
+                                    }
+                                }
+                            }
+                        }
+                        return false
+                    }
+                }
             }
             stages {
                 stage('Run Tests') {
@@ -60,3 +76,4 @@ pipeline {
 // 4. Set up a GitHub webhook to trigger builds immediately on push (recommended over pollSCM)
 // 5. Ensure README.md is modified and pushed to the repository to trigger the 'Check Readme Change' stage
 // 6. Check the 'Debug Changeset' stage output in the build log to verify which files Jenkins detects as changed
+// 7. SCM settings updated in the Jenkinsfile to disable shallow clone and fetch full commit history
