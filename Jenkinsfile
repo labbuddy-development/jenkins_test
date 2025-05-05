@@ -14,8 +14,8 @@ pipeline {
                     branches: [[name: "*/${env.BRANCH_NAME}"]],
                     extensions: [[$class: 'CloneOption', shallow: false, depth: 0, noTags: false, reference: '']],
                     userRemoteConfigs: [[
-                        credentialsId: ' github-credential-17093581', // it should be changed if using a diffrent repo
-                        url: 'https://github.com/labbuddy-development/jenkins_test.git'
+                        credentialsId: ' github-credential-17093581', // it should be changed if using evry new job
+                        url: 'https://github.com/labbuddy-development/jenkins_test.git' // it should be changed if using evry new job
                     ]]
                 )
             }
