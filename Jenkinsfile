@@ -1,10 +1,10 @@
 pipeline {
     agent any
 
-    triggers {
-        // Poll SCM for changes in any branch, checking every 2 minutes
-        pollSCM('H/2 * * * *')
-    }
+    // triggers {
+    //     // Poll SCM for changes in any branch, checking every 2 minutes
+    //     pollSCM('H/2 * * * *')
+    // }
 
     stages {
         stage('Checkout') {
