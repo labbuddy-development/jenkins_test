@@ -16,16 +16,16 @@ if "!JENKINS_URL:~-1!"=="/" set "JENKINS_URL=!JENKINS_URL:~0,-1!"
 
 :: Step 1: Attempt to fetch Jenkins CSRF crumb
 echo Fetching CSRF crumb from !JENKINS_URL!/crumbIssuer...
-curl -s -u "!JENKINS_USER!:!JENKINS_PASS!" "!JENKINS_URL!/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,%%22:%%22,//crumb)" > crumb.txt
+curl -s -u "!JENKINS_USER!:!JENKINS_PASS!" "!JENKINS_URL!/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,%22:%22,//crumb)" > crumb.txt
 if !ERRORLEVEL! neq 0 (
     echo Failed to fetch CSRF crumb. Check if curl is installed or if Jenkins URL/credentials are correct.
-    del crumb.txt 2>nul
+    del crumb.txt
     exit /b 1
 )
 
 :: Read the crumb from the file and validate it
 set /p CRUMB=<crumb.txt
-del crumb.txt 2>nul
+del crumb.txt
 if "!CRUMB!"=="" (
     echo CSRF crumb is empty. This might happen if CSRF protection is disabled in Jenkins.
     echo Trying to proceed without a CSRF crumb...
@@ -60,61 +60,28 @@ echo   }
 echo }
 ) > credential.json
 
-:: Debug: Verify the file exists and has content
-if not exist "credential.json" (
-    echo Error: credential.json was not created.
-    exit /b 1
-)
-for %%F in ("credential.json") do (
-    if %%~zF==0 (
-        echo Error: credential.json is empty.
-        del "credential.json" 2>nul
-        exit /b 1
-    )
-)
-
 :: Debug: Display the contents of credential.json to verify
 echo Verifying credential.json contents:
-type "credential.json"
+type credential.json
 echo.
 
 :: Send the request to create the credential in the global domain
 if defined CRUMB (
     echo Using CSRF crumb to create credential: !CRUMB!
-    curl -s -u "!JENKINS_USER!:!JENKINS_PASS!" -H "!CRUMB!" -X POST "!JENKINS_URL!/credentials/store/system/domain/_/createCredentials" --data-binary "@credential.json" -H "Content-Type: application/json" > create_credential_result.txt
+    curl -s -u "!JENKINS_USER!:!JENKINS_PASS!" -H "!CRUMB!" -X POST "!JENKINS_URL!/credentials/store/system/domain/_/createCredentials" --data-binary "@credential.json" -H "Content-Type: application/json"
 ) else (
     echo CSRF crumb not used for credential creation.
-    curl -s -u "!JENKINS_USER!:!JENKINS_PASS!" -X POST "!JENKINS_URL!/credentials/store/system/domain/_/createCredentials" --data-binary "@credential.json" -H "Content-Type: application/json" > create_credential_result.txt
+    curl -s -u "!JENKINS_USER!:!JENKINS_PASS!" -X POST "!JENKINS_URL!/credentials/store/system/domain/_/createCredentials" --data-binary "@credential.json" -H "Content-Type: application/json"
 )
 if !ERRORLEVEL! neq 0 (
-    echo Failed to create GitHub credential in Jenkins.
-    echo Response from Jenkins:
-    type "create_credential_result.txt"
-    echo.
-    echo Check the Jenkins URL, credentials, or CSRF settings.
-    echo Also, ensure the GitHub username and token do not contain special characters that break JSON (e.g., ^&, ^>, ^<, ^").
-    del "credential.json" 2>nul
-    del "create_credential_result.txt" 2>nul
+    echo Failed to create GitHub credential in Jenkins. Check the Jenkins URL, credentials, or CSRF settings.
+    echo Also, ensure the credential.json file contains valid JSON and the GitHub username/token do not contain special characters that break JSON.
+    del credential.json
     exit /b 1
 )
 
-:: Check if the response indicates a failure
-findstr /C:"HTTP ERROR" "create_credential_result.txt" >nul
-if !ERRORLEVEL! equ 0 (
-    echo Failed to create GitHub credential in Jenkins.
-    echo Response from Jenkins:
-    type "create_credential_result.txt"
-    echo.
-    echo Check the Jenkins URL, credentials, or CSRF settings.
-    echo Also, ensure the GitHub username and token do not contain special characters that break JSON (e.g., ^&, ^>, ^<, ^").
-    del "credential.json" 2>nul
-    del "create_credential_result.txt" 2>nul
-    exit /b 1
-)
-
-:: Clean up
-del "credential.json" 2>nul
-del "create_credential_result.txt" 2>nul
+:: Clean up credential.json
+del credential.json
 echo Successfully created credential with ID: !CREDENTIAL_ID!
 
 :: Step 3: Create config.xml for the Multibranch Pipeline
@@ -125,17 +92,7 @@ echo ^<org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject plu
 echo   ^<actions/^>
 echo   ^<description^>Testing the multi branch pipeline with github repo^</description^>
 echo   ^<displayName^>!JOB_NAME!^</displayName^>
-echo   ^<properties^>
-echo     ^<jenkins.model.BuildDiscarderProperty^>
-echo       ^<strategy class="hudson.tasks.LogRotator"^>
-echo         ^<daysToKeep^>-1^</daysToKeep^>
-echo         ^<numToKeep^>-1^</numToKeep^>
-echo         ^<artifactDaysToKeep^>-1^</artifactDaysToKeep^>
-echo         ^<artifactNumToKeep^>-1^</artifactNumToKeep^>
-echo       ^</strategy^>
-echo     ^</jenkins.model.BuildDiscarderProperty^>
-echo   ^</properties^>
-echo   ^<quietPeriod^>120^</quietPeriod^>
+echo   ^<properties/^>
 echo   ^<sources class="jenkins.branch.MultiBranchProject$BranchSourceList" plugin="branch-api@2.7.0"^>
 echo     ^<data^>
 echo       ^<jenkins.branch.BranchSource^>
@@ -188,12 +145,12 @@ if !ERRORLEVEL! neq 0 (
     echo Failed to create Jenkins job. Check the Jenkins URL, credentials, job name, or configuration.
     echo If using a password, try using an API token instead: Jenkins > Your Username > Configure > API Token > Generate.
     echo If the error persists, ensure CSRF protection is enabled: Manage Jenkins > Configure Global Security > Check "Enable CSRF Protection".
-    del config.xml 2>nul
+    del config.xml
     exit /b 1
 )
 
 :: Clean up
-del config.xml 2>nul
+del config.xml
 echo Successfully created Multibranch Pipeline job: !JOB_NAME!
 echo You can now view it at: !JENKINS_URL!/job/!JOB_NAME!/
 exit /b 0
