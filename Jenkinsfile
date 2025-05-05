@@ -23,7 +23,7 @@ pipeline {
         stage('Check Readme Change') {
             when {
                 // Only proceed if README.md has changed
-                changeset pattern: "(?i)^README\\.md$", caseSensitive: false
+                changeset pattern: "(?i)^README\\.md\\$", caseSensitive: false
             }
             stages {
                 stage('Run Tests') {
