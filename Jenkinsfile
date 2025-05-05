@@ -14,7 +14,7 @@ pipeline {
                     branches: [[name: "*/${env.BRANCH_NAME}"]],
                     extensions: [[$class: 'CloneOption', shallow: false, depth: 0, noTags: false, reference: '']],
                     userRemoteConfigs: [[
-                        credentialsId: 'aa2cabb1-2bd4-4521-bbf0-dc9b47a7f758',
+                        credentialsId: ' github-credential-17093581', // it should be changed if using a diffrent repo
                         url: 'https://github.com/labbuddy-development/jenkins_test.git'
                     ]]
                 )
@@ -70,10 +70,4 @@ pipeline {
 }
 
 // Note: The following configurations should be set up in Jenkins to fully implement the requested features:
-// 1. Enable "GitHub Branch Source Plugin" to automatically detect and create jobs for new branches
-// 2. Configure the Jenkins job as a "Multibranch Pipeline" to handle multiple branches
-// 3. Enable "Prune stale branches" in the Branch Source configuration to automatically delete jobs for deleted branches
-// 4. Set up a GitHub webhook to trigger builds immediately on push (recommended over pollSCM)
-// 5. Ensure README.md is modified and pushed to the repository to trigger the 'Check Readme Change' stage
-// 6. Check the 'Debug Changeset' stage output in the build log to verify which files Jenkins detects as changed
-// 7. SCM settings updated in the Jenkinsfile to disable shallow clone and fetch full commit history
+// 1. Make Sure "GitHub Branch Source Plugin" is enabled to automatically detect and create jobs for new branches
