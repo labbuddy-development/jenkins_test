@@ -19,5 +19,6 @@ Tested the webhook
 #v2.2 Updated on 2025-05-05
 #v2.3 Updated on 2025-05-05
 #v2.4 Updated on 2025-05-05
-#v2.4 Updated on 2025-05-05
+#v2.5 Updated on 2025-05-05
+#v2.6 Updated on 2025-05-05
 
